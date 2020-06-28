@@ -3,6 +3,8 @@
 This is an example of a working `graphql` API (with `subscriptions`)
 which is purely serverless 🔥
 
+![how it works](how-it-works.gif)
+
 ## Technologies
 
 I've written this example using golang. The when it comes to the infrastructure:

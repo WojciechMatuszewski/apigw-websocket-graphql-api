@@ -19,6 +19,17 @@ It uses a generic PK and SK for overloading and has `GSI` on `connectionID`(spar
 
 ![some sample data](sample-structure.png)
 
+## Deployment
+
+Make sur you have [serverless framework](https://github.com/serverless/serverless) installed.
+
+Next, make sure that the values within the `serverless.yml` are correct. Mainly `region` one.
+
+Then, simply run these 2 commands
+
+- `npm install`
+- `sls deploy`
+
 ## Word of caution
 
 This should be used as an example not something that you ship yourself.

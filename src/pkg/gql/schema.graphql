@@ -1,0 +1,23 @@
+type Query {
+  foo: String!
+}
+
+type Mutation {
+    message(input: MessageInput!): Message
+}
+
+type Subscription {
+    message: Message!
+    # just to test 2 subscriptions
+    otherMessage: Message!
+}
+
+input MessageInput {
+    message: String!
+}
+
+type Message {
+    id: ID!
+    message: String!
+    createdAt: String!
+}

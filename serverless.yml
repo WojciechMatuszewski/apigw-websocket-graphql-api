@@ -1,0 +1,138 @@
+service: wojtek-apigwgraphlv4
+
+provider:
+    name: aws
+    region: eu-central-1
+    runtime: go1.x
+    stage: ${opt:stage, 'dev'}
+   
+custom:
+    DATA_TABLE_NAME: ${self:service}-table
+    # --- #
+    go:
+        baseDir: ./src
+    serverless-iam-roles-per-function:
+        defaultInherit: true
+    
+plugins:
+    - serverless-go-plugin
+    - serverless-iam-roles-per-function
+    - serverless-pseudo-parameters
+    
+    
+functions:
+    graphql:
+        handler: ./functions/graphql
+        environment:
+            DATA_TABLE_NAME: !Ref DataTable
+        iamRoleStatements:
+            - Effect: Allow
+              Resource:
+                  - !Sub "#{DataTable.Arn}"
+                  - !Sub "#{DataTable.Arn}/*"
+              Action:
+                  - dynamodb:PutItem
+        events:
+            - http:
+                  cors: true
+                  method: POST
+                  path: /graphql
+                  
+    connect:
+        handler: ./functions/connect
+        events:
+            - websocket: $connect
+            
+    disconnect:
+        handler: ./functions/disconnect
+        environment:
+            DATA_TABLE_NAME: !Ref DataTable
+        iamRoleStatements:
+            - Effect: Allow
+              Resource:
+                  - !Sub "#{DataTable.Arn}"
+                  - !Sub "#{DataTable.Arn}/*"
+              Action:
+                  - dynamodb:Query
+                  - dynamodb:BatchWriteItem
+        events:
+            - websocket: $disconnect
+            
+    subscription:
+        handler: ./functions/subscription
+        environment:
+            DATA_TABLE_NAME: !Ref DataTable
+            APIGW_ADDR: !Sub "https://#{WebsocketsApi}.execute-api.#{AWS::Region}.amazonaws.com/${self:provider.stage}"
+        iamRoleStatements:
+            - Effect: Allow
+              Resource:
+                  - !Sub "#{DataTable.Arn}"
+                  - !Sub "#{DataTable.Arn}/*"
+              Action:
+                  - dynamodb:PutItem
+            - Effect: Allow
+              Resource:
+                  - !Sub "arn:aws:execute-api:#{AWS::Region}:#{AWS::AccountId}:#{WebsocketsApi}/*"
+              Action:
+                  - execute-api:ManageConnections
+        events:
+            - websocket: $default
+            
+    stream:
+        handler: ./functions/stream
+        environment:
+            DATA_TABLE_NAME: !Ref DataTable
+            APIGW_ADDR: !Sub "https://#{WebsocketsApi}.execute-api.#{AWS::Region}.amazonaws.com/${self:provider.stage}"
+        iamRoleStatements:
+            - Effect: Allow
+              Resource:
+                  - !Sub "#{DataTable.Arn}"
+                  - !Sub "#{DataTable.Arn}/*"
+              Action:
+                  - dynamodb:Query
+                  - dynamodb:GetItem
+            - Effect: Allow
+              Resource:
+                  - !Sub "arn:aws:execute-api:#{AWS::Region}:#{AWS::AccountId}:#{WebsocketsApi}/*"
+              Action:
+                  - execute-api:ManageConnections
+        events:
+            - stream:
+                  type: dynamodb
+                  arn: !GetAtt DataTable.StreamArn
+                  batchSize: 1
+                  maximumRetryAttempts: 1
+    
+resources:
+    Resources:
+       DataTable:
+        Type: AWS::DynamoDB::Table
+        Properties:
+            TableName: ${self:custom.DATA_TABLE_NAME}
+            AttributeDefinitions:
+                - AttributeName: pk
+                  AttributeType: S
+                - AttributeName: sk
+                  AttributeType: S
+                - AttributeName: connectionID
+                  AttributeType: S
+            KeySchema:
+                - AttributeName: pk
+                  KeyType: HASH
+                - AttributeName: sk
+                  KeyType: RANGE
+            BillingMode: PAY_PER_REQUEST
+            StreamSpecification:
+                StreamViewType: NEW_IMAGE
+            GlobalSecondaryIndexes:
+                - IndexName: ByConnectionID
+                  KeySchema:
+                      - AttributeName: connectionID
+                        KeyType: HASH
+                  Projection:
+                      NonKeyAttributes:
+                          - pk
+                          - sk
+                      ProjectionType: INCLUDE
+                      
+                        

@@ -7,7 +7,7 @@ which is purely serverless 🔥
 
 I've written this example using golang. The when it comes to the infrastructure:
 
-- DynamoDB
+- DynamoDB (with streams for `pubSub` like behavior)
 - API Gateway (websocket and REST API)
 
 
